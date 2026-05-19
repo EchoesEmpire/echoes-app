@@ -9,7 +9,6 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  // Convertir historial al formato de Gemini
   const geminiMessages = messages.map(m => ({
     role: m.role === 'assistant' ? 'model' : 'user',
     parts: [{ text: m.content }]
@@ -30,14 +29,17 @@ export default async function handler(req, res) {
     );
 
     const data = await response.json();
+    console.log('Gemini response:', JSON.stringify(data));
+
     const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (reply) {
       return res.status(200).json({ reply });
     } else {
-      return res.status(500).json({ error: 'No response from AI' });
+      return res.status(500).json({ error: 'No response from AI', detail: JSON.stringify(data) });
     }
   } catch (error) {
-    return res.status(500).json({ error: 'Internal server error' });
+    console.log('Fetch error:', error.message);
+    return res.status(500).json({ error: error.message });
   }
 }
