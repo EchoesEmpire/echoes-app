@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Echoes — Habla con quien eras</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    :root {
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --border: #1e1e2e;
+      --accent: #7c6af7;
+      --accent-soft: #a594f9;
+      --text: #e8e8f0;
+      --text-muted: #6b6b8a;
+      --success: #4ade80;
+    }
+
+    body {
+      font-family: 'Georgia', serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* LANDING */
+    #landing {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    .logo {
+      font-size: 1rem;
+      letter-spacing: 0.4em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 3rem;
+    }
+
+    h1 {
+      font-size: clamp(2.5rem, 6vw, 5rem);
+      font-weight: 400;
+      line-height: 1.15;
+      margin-bottom: 1.5rem;
+      background: linear-gradient(135deg, #fff 0%, var(--accent-soft) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      font-size: 1.25rem;
+      color: var(--text-muted);
+      max-width: 520px;
+      line-height: 1.7;
+      margin-bottom: 3rem;
+      font-style: italic;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 1rem 2.5rem;
+      font-size: 1.1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+      letter-spacing: 0.02em;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-soft);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(124, 106, 247, 0.4);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      padding: 0.8rem 2rem;
+      font-size: 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+      margin-left: 1rem;
+    }
+
+    .btn-secondary:hover { color: var(--text); border-color: var(--accent); }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.5rem;
+      max-width: 900px;
+      margin: 5rem auto 0;
+      text-align: left;
+    }
+
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.75rem;
+    }
+
+    .feature-icon { font-size: 1.75rem; margin-bottom: 1rem; }
+    .feature-title { font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--accent-soft); }
+    .feature-desc { font-size: 0.95rem; color: var(--text-muted); line-height: 1.6; }
+
+    /* AUTH MODAL */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.active { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 420px;
+      margin: 1rem;
+    }
+
+    .modal h2 { font-size: 1.5rem; margin-bottom: 0.5rem; font-weight: 400; }
+    .modal p { color: var(--text-muted); margin-bottom: 2rem; font-size: 0.95rem; }
+
+    .form-group { margin-bottom: 1.25rem; }
+    .form-group label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; letter-spacing: 0.05em; text-transform: uppercase; }
+
+    .form-group input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      color: var(--text);
+      font-size: 1rem;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+
+    .form-group input:focus { outline: none; border-color: var(--accent); }
+
+    .modal-btn { width: 100%; margin-top: 0.5rem; }
+
+    .modal-switch {
+      text-align: center;
+      margin-top: 1.25rem;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .modal-switch a { color: var(--accent-soft); cursor: pointer; text-decoration: none; }
+    .modal-switch a:hover { text-decoration: underline; }
+
+    .close-modal {
+      float: right;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.5rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .error-msg { color: #f87171; font-size: 0.875rem; margin-top: 0.5rem; }
+
+    /* APP */
+    #app { display: none; min-height: 100vh; }
+
+    .app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.25rem 2rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .app-logo { font-size: 0.85rem; letter-spacing: 0.4em; color: var(--text-muted); text-transform: uppercase; }
+
+    .header-actions { display: flex; gap: 1rem; align-items: center; }
+
+    .nav-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 0.5rem 1.25rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+
+    .nav-btn:hover { color: var(--text); border-color: var(--accent); }
+    .nav-btn.active { color: var(--accent-soft); border-color: var(--accent); }
+
+    .app-content {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 3rem 2rem;
+    }
+
+    /* WEEKLY CHECK-IN */
+    #checkin-view h2 { font-size: 2rem; font-weight: 400; margin-bottom: 0.5rem; }
+    #checkin-view .date-label { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2.5rem; }
+
+    .question-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .question-number { font-size: 0.75rem; color: var(--accent); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.5rem; }
+    .question-text { font-size: 1.2rem; margin-bottom: 1.25rem; line-height: 1.5; }
+
+    .question-card textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      color: var(--text);
+      font-family: 'Georgia', serif;
+      font-size: 1rem;
+      line-height: 1.6;
+      resize: vertical;
+      min-height: 100px;
+      transition: border-color 0.2s;
+    }
+
+    .question-card textarea:focus { outline: none; border-color: var(--accent); }
+
+    .save-btn-wrap { text-align: center; margin-top: 1rem; }
+
+    /* ECHOES VIEW - CONVERSACIÓN */
+    #echoes-view h2 { font-size: 2rem; font-weight: 400; margin-bottom: 0.5rem; }
+    #echoes-view .subtitle-small { color: var(--text-muted); margin-bottom: 2rem; font-style: italic; }
+
+    .period-select {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .period-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 0.5rem 1.25rem;
+      border-radius: 20px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+
+    .period-btn:hover, .period-btn.selected { background: var(--accent); color: white; border-color: var(--accent); }
+
+    .chat-container {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .chat-messages {
+      height: 400px;
+      overflow-y: auto;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .message {
+      max-width: 80%;
+      padding: 0.875rem 1.125rem;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    .message.user {
+      align-self: flex-end;
+      background: var(--accent);
+      color: white;
+      border-radius: 12px 12px 2px 12px;
+    }
+
+    .message.echo {
+      align-self: flex-start;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px 12px 12px 2px;
+      color: var(--text);
+    }
+
+    .message.echo .echo-label {
+      font-size: 0.7rem;
+      color: var(--accent-soft);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 0.35rem;
+    }
+
+    .chat-input-area {
+      display: flex;
+      gap: 0.75rem;
+      padding: 1rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .chat-input-area input {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      color: var(--text);
+      font-family: 'Georgia', serif;
+      font-size: 0.95rem;
+    }
+
+    .chat-input-area input:focus { outline: none; border-color: var(--accent); }
+
+    .send-btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.2s;
+    }
+
+    .send-btn:hover { background: var(--accent-soft); }
+    .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .no-entries-msg {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    /* UPGRADE BANNER */
+    .upgrade-banner {
+      background: linear-gradient(135deg, var(--accent) 0%, #9b59b6 100%);
+      border-radius: 12px;
+      padding: 1.5rem 2rem;
+      margin-bottom: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .upgrade-banner p { font-size: 0.95rem; line-height: 1.4; }
+    .upgrade-banner strong { display: block; margin-bottom: 0.25rem; font-size: 1.05rem; }
+
+    .upgrade-btn {
+      background: white;
+      color: var(--accent);
+      border: none;
+      padding: 0.65rem 1.5rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      white-space: nowrap;
+      font-family: inherit;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+
+    .upgrade-btn:hover { transform: scale(1.03); }
+
+    .loading-dots::after {
+      content: '';
+      animation: dots 1.5s infinite;
+    }
+
+    @keyframes dots {
+      0% { content: '.'; }
+      33% { content: '..'; }
+      66% { content: '...'; }
+    }
+
+    @media (max-width: 600px) {
+      .app-header { padding: 1rem; }
+      .app-content { padding: 2rem 1rem; }
+      .upgrade-banner { flex-direction: column; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- LANDING PAGE -->
+<section id="landing">
+  <div class="logo">Echoes</div>
+  <h1>Habla con<br>quien eras</h1>
+  <p class="subtitle">Cada semana capturas cómo piensas. Con el tiempo, construyes una versión conversacional de ti mismo que puedes consultar para tomar mejores decisiones hoy.</p>
+  <div>
+    <button class="btn-primary" onclick="showModal('register')">Comenzar gratis</button>
+    <button class="btn-secondary" onclick="showModal('login')">Iniciar sesión</button>
+  </div>
+
+  <div class="features">
+    <div class="feature-card">
+      <div class="feature-icon">🪞</div>
+      <div class="feature-title">Tu eco del pasado</div>
+      <div class="feature-desc">Cada respuesta semanal alimenta una versión tuya que recuerda cómo razonabas, qué te preocupaba y qué te importaba en ese momento.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">💬</div>
+      <div class="feature-title">Conversaciones reales</div>
+      <div class="feature-desc">Pregúntale a tu yo de hace 1 año: "¿Cómo veías esta situación?" y recibe respuestas construidas desde tus propias palabras.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📈</div>
+      <div class="feature-title">Claridad en decisiones</div>
+      <div class="feature-desc">Ver la diferencia entre quien eras y quien eres hoy es la herramienta de autoconocimiento más poderosa que existe.</div>
+    </div>
+  </div>
+</section>
+
+<!-- AUTH MODAL -->
+<div class="modal-overlay" id="auth-modal">
+  <div class="modal">
+    <button class="close-modal" onclick="closeModal()">×</button>
+    <div id="modal-register">
+      <h2>Empieza hoy</h2>
+      <p>Tu primera semana es completamente gratis.</p>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="reg-email" placeholder="tu@email.com">
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" id="reg-pass" placeholder="Mínimo 6 caracteres">
+      </div>
+      <div id="reg-error" class="error-msg"></div>
+      <button class="btn-primary modal-btn" onclick="register()">Crear cuenta</button>
+      <div class="modal-switch">¿Ya tienes cuenta? <a onclick="switchModal('login')">Inicia sesión</a></div>
+    </div>
+    <div id="modal-login" style="display:none">
+      <h2>Bienvenido de vuelta</h2>
+      <p>Tu eco te espera.</p>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="log-email" placeholder="tu@email.com">
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" id="log-pass" placeholder="Tu contraseña">
+      </div>
+      <div id="log-error" class="error-msg"></div>
+      <button class="btn-primary modal-btn" onclick="login()">Entrar</button>
+      <div class="modal-switch">¿No tienes cuenta? <a onclick="switchModal('register')">Regístrate gratis</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- APP (visible después de login) -->
+<div id="app">
+  <header class="app-header">
+    <div class="app-logo">Echoes</div>
+    <div class="header-actions">
+      <button class="nav-btn active" id="btn-checkin" onclick="showView('checkin')">Esta semana</button>
+      <button class="nav-btn" id="btn-echoes" onclick="showView('echoes')">Mis Ecos</button>
+      <button class="nav-btn" onclick="logout()">Salir</button>
+    </div>
+  </header>
+
+  <div class="app-content">
+    <!-- CHECK-IN SEMANAL -->
+    <div id="checkin-view">
+      <h2>Reflexión semanal</h2>
+      <p class="date-label" id="week-label"></p>
+
+      <div id="checkin-done" style="display:none">
+        <div class="question-card">
+          <p style="text-align:center; font-size:1.1rem; color: var(--success);">✓ Ya completaste esta semana</p>
+          <p style="text-align:center; color: var(--text-muted); margin-top:0.5rem; font-style:italic;">Vuelve la próxima semana para tu nueva reflexión. Mientras tanto, visita tus Ecos.</p>
+        </div>
+      </div>
+
+      <div id="checkin-form">
+        <div class="question-card">
+          <div class="question-number">Pregunta 1 de 4</div>
+          <div class="question-text">¿Qué decisión tomaste esta semana de la que más te sientes responsable?</div>
+          <textarea id="q1" placeholder="Escribe con libertad. Nadie más leerá esto."></textarea>
+        </div>
+
+        <div class="question-card">
+          <div class="question-number">Pregunta 2 de 4</div>
+          <div class="question-text">¿Qué es lo que más te preocupa en este momento de tu vida? (No lo que dices que te preocupa. Lo que realmente te quita el sueño.)</div>
+          <textarea id="q2" placeholder="Sé honesto contigo mismo."></textarea>
+        </div>
+
+        <div class="question-card">
+          <div class="question-number">Pregunta 3 de 4</div>
+          <div class="question-text">Si pudieras cambiar una sola cosa de cómo te comportas con las personas que más te importan, ¿qué sería?</div>
+          <textarea id="q3" placeholder="Una sola cosa, la más importante."></textarea>
+        </div>
+
+        <div class="question-card">
+          <div class="question-number">Pregunta 4 de 4</div>
+          <div class="question-text">¿Qué versión de ti mismo estás intentando ser en este período de tu vida?</div>
+          <textarea id="q4" placeholder="Descríbela con detalle."></textarea>
+        </div>
+
+        <div class="save-btn-wrap">
+          <button class="btn-primary" onclick="saveCheckin()">Guardar esta semana →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ECHOES: CONVERSACIÓN CON TU YO PASADO -->
+    <div id="echoes-view" style="display:none">
+      <h2>Mis Ecos</h2>
+      <p class="subtitle-small">Habla con quien eras. Las respuestas se construyen desde tus propias palabras.</p>
+
+      <div id="echoes-upgrade-banner" style="display:none">
+        <div class="upgrade-banner">
+          <p><strong>Desbloquea Ecos ilimitados</strong>Accede a todos tus períodos y conversaciones sin límite por $7/mes.</p>
+          <button class="upgrade-btn" onclick="goUpgrade()">Desbloquear →</button>
+        </div>
+      </div>
+
+      <div class="period-select" id="period-select"></div>
+
+      <div id="echo-no-data" style="display:none">
+        <div class="no-entries-msg">
+          <p>Todavía no tienes suficientes registros para este período.</p>
+          <p style="margin-top:0.5rem">Completa al menos 2 semanas de check-ins para activar este Eco.</p>
+        </div>
+      </div>
+
+      <div id="echo-chat" style="display:none">
+        <div class="chat-container">
+          <div class="chat-messages" id="chat-messages"></div>
+          <div class="chat-input-area">
+            <input type="text" id="chat-input" placeholder="Pregúntale algo a quien eras..." onkeypress="if(event.key==='Enter') sendMessage()">
+            <button class="send-btn" id="send-btn" onclick="sendMessage()">Enviar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// CONFIGURACIÓN — REEMPLAZA ESTOS VALORES
+// ============================================================
+const SUPABASE_URL = 'TU_SUPABASE_URL_AQUI';
+const SUPABASE_ANON_KEY = 'TU_SUPABASE_ANON_KEY_AQUI';
+// ============================================================
+
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser = null;
+let selectedPeriod = null;
+let chatHistory = [];
+
+const QUESTIONS = {
+  q1: '¿Qué decisión tomaste esta semana de la que más te sientes responsable?',
+  q2: '¿Qué es lo que más te preocupa en este momento de tu vida?',
+  q3: 'Si pudieras cambiar una sola cosa de cómo te comportas con las personas que más te importan, ¿qué sería?',
+  q4: '¿Qué versión de ti mismo estás intentando ser en este período de tu vida?'
+};
+
+// AUTH
+function showModal(type) {
+  document.getElementById('auth-modal').classList.add('active');
+  switchModal(type);
+}
+
+function closeModal() {
+  document.getElementById('auth-modal').classList.remove('active');
+}
+
+function switchModal(type) {
+  document.getElementById('modal-register').style.display = type === 'register' ? 'block' : 'none';
+  document.getElementById('modal-login').style.display = type === 'login' ? 'block' : 'none';
+}
+
+async function register() {
+  const email = document.getElementById('reg-email').value.trim();
+  const pass = document.getElementById('reg-pass').value;
+  document.getElementById('reg-error').textContent = '';
+  
+  if (!email || !pass) { document.getElementById('reg-error').textContent = 'Completa todos los campos.'; return; }
+  if (pass.length < 6) { document.getElementById('reg-error').textContent = 'La contraseña debe tener al menos 6 caracteres.'; return; }
+
+  const { data, error } = await sb.auth.signUp({ email, password: pass });
+  if (error) { document.getElementById('reg-error').textContent = error.message; return; }
+  if (data.user) { currentUser = data.user; initApp(); }
+}
+
+async function login() {
+  const email = document.getElementById('log-email').value.trim();
+  const pass = document.getElementById('log-pass').value;
+  document.getElementById('log-error').textContent = '';
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) { document.getElementById('log-error').textContent = 'Email o contraseña incorrectos.'; return; }
+  if (data.user) { currentUser = data.user; initApp(); }
+}
+
+async function logout() {
+  await sb.auth.signOut();
+  currentUser = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('landing').style.display = 'flex';
+}
+
+// INIT
+async function initApp() {
+  closeModal();
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('week-label').textContent = 'Semana del ' + getWeekLabel();
+  await checkWeekDone();
+  showView('checkin');
+}
+
+function getWeekLabel() {
+  const now = new Date();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - now.getDay() + 1);
+  return monday.toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function getWeekDate() {
+  const now = new Date();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - now.getDay() + 1);
+  return monday.toISOString().split('T')[0];
+}
+
+async function checkWeekDone() {
+  const weekDate = getWeekDate();
+  const { data } = await sb.from('entries').select('id').eq('user_id', currentUser.id).eq('week_date', weekDate).limit(1);
+  if (data && data.length > 0) {
+    document.getElementById('checkin-form').style.display = 'none';
+    document.getElementById('checkin-done').style.display = 'block';
+  } else {
+    document.getElementById('checkin-form').style.display = 'block';
+    document.getElementById('checkin-done').style.display = 'none';
+  }
+}
+
+async function saveCheckin() {
+  const answers = [
+    { key: 'q1', val: document.getElementById('q1').value.trim() },
+    { key: 'q2', val: document.getElementById('q2').value.trim() },
+    { key: 'q3', val: document.getElementById('q3').value.trim() },
+    { key: 'q4', val: document.getElementById('q4').value.trim() }
+  ];
+
+  if (answers.some(a => a.val.length < 10)) {
+    alert('Por favor responde todas las preguntas con al menos 10 caracteres.');
+    return;
+  }
+
+  const weekDate = getWeekDate();
+  const rows = answers.map(a => ({ user_id: currentUser.id, week_date: weekDate, question_key: a.key, answer: a.val }));
+
+  const { error } = await sb.from('entries').insert(rows);
+  if (error) { alert('Error al guardar. Inténtalo de nuevo.'); return; }
+
+  document.getElementById('checkin-form').style.display = 'none';
+  document.getElementById('checkin-done').style.display = 'block';
+  alert('✓ Semana guardada. Tu eco crece.');
+}
+
+// VIEWS
+function showView(view) {
+  document.getElementById('checkin-view').style.display = view === 'checkin' ? 'block' : 'none';
+  document.getElementById('echoes-view').style.display = view === 'echoes' ? 'block' : 'none';
+  document.getElementById('btn-checkin').classList.toggle('active', view === 'checkin');
+  document.getElementById('btn-echoes').classList.toggle('active', view === 'echoes');
+  if (view === 'echoes') loadEchoesView();
+}
+
+async function loadEchoesView() {
+  const { data: entries } = await sb.from('entries').select('week_date').eq('user_id', currentUser.id).order('week_date', { ascending: false });
+  if (!entries || entries.length === 0) {
+    document.getElementById('echo-no-data').style.display = 'block';
+    document.getElementById('echo-chat').style.display = 'none';
+    document.getElementById('period-select').innerHTML = '';
+    return;
+  }
+
+  // Agrupar por períodos
+  const weeks = [...new Set(entries.map(e => e.week_date))];
+  const periods = buildPeriods(weeks);
+
+  const select = document.getElementById('period-select');
+  select.innerHTML = '';
+
+  periods.forEach((p, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'period-btn' + (i === 0 ? ' selected' : '');
+    btn.textContent = p.label;
+    btn.onclick = () => selectPeriod(p, btn);
+    select.appendChild(btn);
+  });
+
+  // Mostrar banner upgrade si tiene solo plan free y hay más de 1 período
+  if (periods.length > 1) {
+    document.getElementById('echoes-upgrade-banner').style.display = 'block';
+  }
+
+  selectPeriod(periods[0], select.querySelector('.period-btn'));
+}
+
+function buildPeriods(weeks) {
+  const now = new Date();
+  const periods = [];
+
+  const last4 = weeks.slice(0, 4);
+  if (last4.length >= 1) {
+    periods.push({ label: 'Último mes', weeks: last4, minWeeks: 1 });
+  }
+
+  const last12 = weeks.slice(0, 12);
+  if (last12.length >= 2) {
+    periods.push({ label: 'Últimos 3 meses', weeks: last12, minWeeks: 2 });
+  }
+
+  const last26 = weeks.slice(0, 26);
+  if (last26.length >= 4) {
+    periods.push({ label: 'Últimos 6 meses', weeks: last26, minWeeks: 4 });
+  }
+
+  if (weeks.length >= 8) {
+    periods.push({ label: 'Todo el tiempo', weeks: weeks, minWeeks: 8 });
+  }
+
+  return periods.length > 0 ? periods : [{ label: 'Primeras semanas', weeks: weeks, minWeeks: 1 }];
+}
+
+async function selectPeriod(period, btnEl) {
+  document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('selected'));
+  btnEl.classList.add('selected');
+  selectedPeriod = period;
+  chatHistory = [];
+
+  const { data: entries } = await sb.from('entries')
+    .select('question_key, answer, week_date')
+    .eq('user_id', currentUser.id)
+    .in('week_date', period.weeks)
+    .order('week_date', { ascending: true });
+
+  if (!entries || entries.length < 4) {
+    document.getElementById('echo-no-data').style.display = 'block';
+    document.getElementById('echo-chat').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('echo-no-data').style.display = 'none';
+  document.getElementById('echo-chat').style.display = 'block';
+
+  const messages = document.getElementById('chat-messages');
+  messages.innerHTML = '';
+
+  // Construir contexto del eco
+  window.echoContext = buildEchoContext(entries, period.label);
+
+  addEchoMessage('Estoy aquí. Soy quien eras durante ' + period.label.toLowerCase() + '. ¿Qué quieres preguntarme?');
+}
+
+function buildEchoContext(entries, periodLabel) {
+  let ctx = `Eres un eco conversacional. Represents a una persona específica durante el período: "${periodLabel}". 
+  
+Habla en primera persona ("yo pensaba", "en ese momento yo sentía", "lo que me preocupaba era...").
+Responde SOLO basándote en las siguientes respuestas reales que esta persona escribió durante ese período.
+Sé fiel a sus palabras, sus preocupaciones y su forma de ver el mundo en ese momento.
+No inventes información. Si algo no aparece en los registros, dilo honestamente.
+Mantén un tono reflexivo, íntimo, directo.
+Nunca salgas del rol. Nunca expliques que eres una IA.
+
+REGISTROS DE ESE PERÍODO:\n\n`;
+
+  const byWeek = {};
+  entries.forEach(e => {
+    if (!byWeek[e.week_date]) byWeek[e.week_date] = {};
+    byWeek[e.week_date][e.question_key] = e.answer;
+  });
+
+  Object.entries(byWeek).forEach(([date, qs]) => {
+    ctx += `--- Semana del ${date} ---\n`;
+    Object.entries(QUESTIONS).forEach(([key, question]) => {
+      if (qs[key]) ctx += `${question}\n→ ${qs[key]}\n\n`;
+    });
+  });
+
+  return ctx;
+}
+
+function addEchoMessage(text) {
+  const messages = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'message echo';
+  div.innerHTML = `<div class="echo-label">Tu eco</div>${text}`;
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function addUserMessage(text) {
+  const messages = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'message user';
+  div.textContent = text;
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const sendBtn = document.getElementById('send-btn');
+  const text = input.value.trim();
+  if (!text || sendBtn.disabled) return;
+
+  input.value = '';
+  addUserMessage(text);
+  sendBtn.disabled = true;
+
+  chatHistory.push({ role: 'user', content: text });
+
+  // Mostrar loading
+  const messages = document.getElementById('chat-messages');
+  const loading = document.createElement('div');
+  loading.className = 'message echo';
+  loading.innerHTML = `<div class="echo-label">Tu eco</div><span class="loading-dots">Recordando</span>`;
+  messages.appendChild(loading);
+  messages.scrollTop = messages.scrollHeight;
+
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        systemPrompt: window.echoContext,
+        messages: chatHistory
+      })
+    });
+
+    const data = await response.json();
+    loading.remove();
+
+    if (data.reply) {
+      chatHistory.push({ role: 'assistant', content: data.reply });
+      addEchoMessage(data.reply);
+    } else {
+      addEchoMessage('Hubo un error al recordar. Inténtalo de nuevo.');
+    }
+  } catch (err) {
+    loading.remove();
+    addEchoMessage('Error de conexión. Verifica tu internet e inténtalo de nuevo.');
+  }
+
+  sendBtn.disabled = false;
+  input.focus();
+}
+
+function goUpgrade() {
+  alert('Redirigiendo a página de pago... (Conecta Stripe en el siguiente paso)');
+  // Aquí irá el link de Stripe Payment Link cuando lo configures
+}
+
+// Verificar sesión al cargar
+window.addEventListener('load', async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session?.user) {
+    currentUser = session.user;
+    initApp();
+  }
+});
+</script>
+</body>
+</html>
