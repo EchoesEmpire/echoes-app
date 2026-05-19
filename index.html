@@ -894,10 +894,8 @@ async function sendMessage() {
 }
 
 function goUpgrade() {
-  alert('Redirigiendo a página de pago... (Conecta Stripe en el siguiente paso)');
-  // Aquí irá el link de Stripe Payment Link cuando lo configures
+  window.open("TU_STRIPE_PAYMENT_LINK_AQUI", "_blank");
 }
-
 // Verificar sesión al cargar
 window.addEventListener('load', async () => {
   const { data: { session } } = await sb.auth.getSession();
